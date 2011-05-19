@@ -36,7 +36,7 @@ function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
     );
 
     // Add new submit handler to save our config data.
-    array_unshift($form['#submit'], '_webform_encrypt_component_save');
+    $form['#submit'][] = '_webform_encrypt_component_save';
   }
 
 }
@@ -46,11 +46,12 @@ function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
  */
 function _webform_encrypt_component_save($form, $form_state) {
   $record = new StdClass();
+  $record->nid = $form_state['values']['nid'];
   $record->cid = $form_state['values']['cid'];
   foreach ($form_state['values']['encryption'] as $key => $value) {
     $record->$key = $value;
   }
-  drupal_write_record('webform_encrypt', $record, 'cid');
+  drupal_write_record('webform_encrypt', $record);
 }
 
 /**
@@ -68,7 +69,8 @@ function webform_encrypt_node_load($nodes, $types) {
     $component_ids = array_keys($node->webform['components']);
     $encrypt =  db_select('webform_encrypt', 'we')
                   ->fields('we', array('cid', 'encrypt'))
-                  ->condition('cid', $component_ids, 'IN')
+                  ->condition('we.nid', $node->nid)                  
+                  ->condition('we.cid', $component_ids, 'IN')
                   ->execute()
                   ->fetchAllKeyed();
     foreach ($node->webform['components'] as $cid => $component) {

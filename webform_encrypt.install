@@ -7,6 +7,12 @@ function webform_encrypt_schema() {
   $schema['webform_encrypt'] = array(
     'description' => 'Form metadata',
     'fields' => array(
+      'nid' => array(
+        'description' => 'The node ID from webform',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+      ),
       'cid' => array(
         'description' => 'The component ID from webform',
         'type' => 'int',
@@ -21,9 +27,6 @@ function webform_encrypt_schema() {
         'not null' => TRUE,
       ),
     ),
-    'unique keys' => array(
-      'cid' => array('cid'),
-    ),
   );
   return $schema;
 }
@@ -34,3 +37,4 @@ function webform_encrypt_schema() {
 function webform_encrypt_uninstall() {
   drupal_uninstall_schema('webform_encrypt');
 }
+

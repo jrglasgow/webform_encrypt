@@ -34,7 +34,7 @@ function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
       $form['encryption']['encrypt'] = array(
         '#type' => 'checkbox',
         '#title' => t('Encrypt this field\'s value'),
-        '#description' => t('!link to edit encryption settings.', array('!link' => l('Click here', 'admin/settings/aes'))),
+        '#description' => t('!link to edit encryption settings.', array('!link' => l('Click here', 'admin/config/system/encrypt'))),
         '#default_value' => isset($component['extra']['encrypt']) ? $component['extra']['encrypt'] : 0,
       );
     }

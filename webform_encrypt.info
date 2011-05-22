@@ -4,8 +4,7 @@ core = 7.x
 package = Webform
 
 files[] = webform_encrypt.module
-files[] = webform_encrypt.install
 
-dependencies[] = aes
+dependencies[] = encrypt
 dependencies[] = webform
 

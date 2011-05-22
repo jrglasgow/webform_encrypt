@@ -16,67 +16,39 @@ function webform_encrypt_permission() {
  * Implementation of hook_form_alter()
  */
 function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
-
   // Add our fields to the component add/edit form.
   if ($form_id == 'webform_component_edit_form') {
 
-    $profile = db_query('SELECT * FROM {webform_encrypt} WHERE cid = ?', array($form['cid']['#value']))->fetchAssoc();
+    $component = $form_state['build_info']['args'][1];
 
-    // Add settings for security.
-    $form['encryption'] = array(
-      '#type' => 'fieldset',
-      '#title' => t('Encryption'),
-      '#tree' => TRUE,
-    );
-    $form['encryption']['encrypt'] = array(
-      '#type' => 'checkbox',
-      '#title' => t('Encrypt this field\'s value'),
-      '#description' => t('!link to edit encryption settings.', array('!link' => l('Click here', 'admin/settings/aes'))),
-      '#default_value' => isset($profile['encrypt']) ? $profile['encrypt'] : 0,
-    );
+    // Exclude webform component types that don't make sense to encrypt.
+    $excluded_types = array('fieldset', 'file', 'markup', 'pagebreak');
+    if (!in_array($form['type']['#value'], $excluded_types)) {
 
-    // Add new submit handler to save our config data.
-    $form['#submit'][] = '_webform_encrypt_component_save';
-  }
-
-}
-
-/**
- * Submit callback to save form component settings.
- */
-function _webform_encrypt_component_save($form, $form_state) {
-  $record = new StdClass();
-  $record->nid = $form_state['values']['nid'];
-  $record->cid = $form_state['values']['cid'];
-  foreach ($form_state['values']['encryption'] as $key => $value) {
-    $record->$key = $value;
-  }
-  drupal_write_record('webform_encrypt', $record);
-}
-
-/**
- * Implementation of hook_node_load().
- * Adding our extra data in to the webform component.
- */
-function webform_encrypt_node_load($nodes, $types) {
-  // Abort if none of the nodes are webforms.
-  if (!in_array('webform', $types)) {
-    return;
-  }
-
-  // Otherwise, let's loop through the nodes.
-  foreach ($nodes as $nid => $node) {
-    $component_ids = array_keys($node->webform['components']);
-    $encrypt =  db_select('webform_encrypt', 'we')
-                  ->fields('we', array('cid', 'encrypt'))
-                  ->condition('we.nid', $node->nid)                  
-                  ->condition('we.cid', $component_ids, 'IN')
-                  ->execute()
-                  ->fetchAllKeyed();
-    foreach ($node->webform['components'] as $cid => $component) {
-      $node->webform['components'][$cid]['encrypt'] = $encrypt[$cid];
+      // Add settings for encryption.
+      $form['encryption'] = array(
+        '#type' => 'fieldset',
+        '#title' => t('Encryption'),
+        '#tree' => TRUE,
+      );
+      $form['encryption']['encrypt'] = array(
+        '#type' => 'checkbox',
+        '#title' => t('Encrypt this field\'s value'),
+        '#description' => t('!link to edit encryption settings.', array('!link' => l('Click here', 'admin/settings/aes'))),
+        '#default_value' => isset($component['extra']['encrypt']) ? $component['extra']['encrypt'] : 0,
+      );
     }
+
   }
+}
+
+/**
+ * Implementation of hook_webform_component_presave().
+ * Save encryption settings for a component.
+ */
+function webform_encrypt_webform_component_presave(&$component) {
+  $component['extra'] = array_merge($component['extra'], $component['encryption']);
+  unset($component['encryption']);
 }
 
 /**
@@ -85,8 +57,9 @@ function webform_encrypt_node_load($nodes, $types) {
  */
 function webform_encrypt_webform_submission_presave($node, &$submission) {
   foreach ($submission->data as $cid => $entry) {
-    if ($node->webform['components'][$cid]['encrypt']) {
-      $submission->data[$cid]['value'][0] = aes_encrypt($entry['value'][0]);
+    if (isset($node->webform['components'][$cid]['extra']['encrypt']) &&
+        $node->webform['components'][$cid]['extra']['encrypt']) {
+      $submission->data[$cid]['value'][0] = encrypt($entry['value'][0], array('base64' => TRUE));
     }
   }
 }
@@ -97,12 +70,13 @@ function webform_encrypt_webform_submission_presave($node, &$submission) {
  */
 function webform_encrypt_webform_submission_render_alter(&$renderable) {
   foreach ($renderable['#submission']->data as $cid => $entry) {
-    if ($renderable['#node']->webform['components'][$cid]['encrypt']) {
+    if (isset($renderable['#node']->webform['components'][$cid]['extra']['encrypt']) &&
+        $renderable['#node']->webform['components'][$cid]['extra']['encrypt']) {
       $form_key = $renderable['#node']->webform['components'][$cid]['form_key'];
       if (user_access('view encrypted values')) {
-        $renderable[$form_key]['#value'] = aes_decrypt($entry['value'][0]);
+        $renderable[$form_key]['#value'] = decrypt($entry['value'][0], array('base64' => TRUE));
       } else {
-        $renderable[$form_key]['#value'] = t('<Value Encrypted>');
+        $renderable[$form_key]['#value'] = t('[Value Encrypted]');
       }
     }
   }

@@ -1,0 +1,5 @@
+<?php
+
+function webform_encrypt_uninstall() {
+  variable_del('webform_encrypt_match_user');
+}

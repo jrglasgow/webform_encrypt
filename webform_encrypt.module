@@ -18,7 +18,6 @@ function webform_encrypt_permission() {
 function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
   // Add our config options to the webform settings page.
   if ($form_id == 'webform_admin_settings') {
-    dsm($form);
     $form['encrypt'] = array(
       '#type' => 'fieldset',
       '#title' => t('Webform Encrypt'),
@@ -88,7 +87,7 @@ function webform_encrypt_webform_submission_presave($node, &$submission) {
 function webform_encrypt_webform_submission_render_alter(&$renderable) {
   // First, determine if 1) if we are dealing with an email or a page view, and 2) if user matching
   // is enabled.
-  if (variable_get('webform_encrypt_match_user', FALSE) && !empty($renderable['#email'])) {
+  if (variable_get('webform_encrypt_match_user', 0) && !empty($renderable['#email'])) {
     // If we are, then try to match a user to the email address we are sending to.
     $uid = db_query('SELECT uid FROM {users} WHERE mail = ?', array($renderable['#email']['email']))->fetchField();
     $account = $uid ? user_load($uid) : NULL;

@@ -67,7 +67,7 @@ function webform_encrypt_form_webform_component_edit_form_alter(&$form, $form_st
  */
 function webform_encrypt_form_alter(&$form, &$form_state, $form_id) {
   // When we are editing a webform submission, 
-  if (strpos($form_id, 'webform_client_form_') === 0) {
+  if (strpos($form_id, 'webform_client_form_') === 0 && $form['details']['sid']['#value']) {
     _webform_encrypt_decrypt_nested_values($form['submitted']);
   }
 }

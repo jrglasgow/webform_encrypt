@@ -63,8 +63,10 @@ function webform_encrypt_form_alter(&$form, $form_state, $form_id) {
  * Save encryption settings for a component.
  */
 function webform_encrypt_webform_component_presave(&$component) {
-  $component['extra'] = array_merge($component['extra'], $component['encryption']);
-  unset($component['encryption']);
+  if (!empty($component['encryption'])) {
+    $component['extra'] = array_merge($component['extra'], $component['encryption']);
+    unset($component['encryption']);
+  }
 }
 
 /**

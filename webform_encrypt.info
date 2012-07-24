@@ -8,4 +8,3 @@ files[] = webform_encrypt.install
 
 dependencies[] = encrypt
 dependencies[] = webform
-

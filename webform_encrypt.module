@@ -1,6 +1,11 @@
 <?php
 
 /**
+ * @file
+ * Main module file for the Webform Encrypt module.
+ */
+
+/**
  * Implementation of hook_permission().
  */
 function webform_encrypt_permission() {

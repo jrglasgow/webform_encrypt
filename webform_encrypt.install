@@ -23,12 +23,11 @@ function webform_encrypt_uninstall() {
 
   // Decrypt all encrypted form values.
   $components = array();
-  $results = db_query('SELECT nid, cid, extra FROM {webform_component}')
-    ->fetchAll();
+  $results = db_query('SELECT nid, cid, extra FROM {webform_component}')->fetchAll();
   foreach ($results as $row) {
     $components[$row->nid . ':' . $row->cid] = unserialize($row->extra);
   }
-  $data = db_query('SELECT nid, sid, cid, data FROM {webform_submitted_data}');
+  $data = db_query('SELECT nid, sid, cid, data FROM {webform_submitted_data}')->fetchAll();
   foreach ($data as $row) {
     $key = $row->nid . ':' . $row->cid;
     if (!empty($components[$key]['encrypt']) && is_array(@unserialize($row->data))) {

@@ -5,18 +5,23 @@
  * Main module file for the Webform Encrypt module.
  */
 
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\encrypt\Entity\EncryptionProfile;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\webform\Entity\WebformSubmission;
+
 module_load_include('inc', 'webform_encrypt', 'includes/webform_encrypt.theme');
 
 /**
  * Implementation of hook_form_FORM_ID_alter().
  */
-function webform_encrypt_form_webform_ui_element_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+function webform_encrypt_form_webform_ui_element_form_alter(&$form, FormStateInterface $form_state) {
   $webform = $form_state->getBuildInfo()['args']['0'];
   $element_id = $form_state->getBuildInfo()['args']['1'];
   $webform_elements = $webform->getElementsInitializedAndFlattened();
 
   $allowed_types = array('textfield', 'textarea');
-  if (in_array($webform_elements[$element_id]['#type'], $allowed_types)) {
+  if (in_array($webform_elements[$element_id]['#type'], $allowed_types) || in_array($element_id, $allowed_types)) {
     // To provide the fieldset for encryption fields on element config form.
     $form['element_encrypt'] = [
       '#type' => 'details',
@@ -36,14 +41,14 @@ function webform_encrypt_form_webform_ui_element_form_alter(&$form, \Drupal\Core
  * Implementation of hook_form_alter().
  */
 function webform_encrypt_form_alter(&$form, &$form_state, $form_id) {
-  // When we are editing a webform submission,
+  // When we are editing a webform submission.
   if (strpos($form_id, 'webform_submission_') === 0) {
     $config = \Drupal::service('config.factory')->get('webform.encrypt')->get('element.settings');
     $elements = $form['elements'];
 
     foreach ($elements as $key => &$element) {
       if (isset($config[$key]['encrypt']) && $config[$key]['encrypt']) {
-        $encryption_profile = \Drupal\encrypt\Entity\EncryptionProfile::load($config[$key]['encrypt_profile']);
+        $encryption_profile = EncryptionProfile::load($config[$key]['encrypt_profile']);
         $form['elements'][$key]['#default_value'] = Drupal::service('encryption')->decrypt($element['#default_value'], $encryption_profile);
       }
     }
@@ -55,14 +60,14 @@ function webform_encrypt_form_alter(&$form, &$form_state, $form_id) {
  *
  * @param \Drupal\Core\Entity\EntityInterface $entity
  */
-function webform_encrypt_entity_presave(Drupal\Core\Entity\EntityInterface $entity) {
-  if ($entity instanceof Drupal\webform\Entity\WebformSubmission) {
+function webform_encrypt_entity_presave(EntityInterface $entity) {
+  if ($entity instanceof WebformSubmission) {
     $config = \Drupal::service('config.factory')->get('webform.encrypt')->get('element.settings');
     $data_original = $entity->getData();
 
     foreach ($data_original as $key => $value) {
       if (isset($config[$key]['encrypt']) && $config[$key]['encrypt']) {
-        $encryption_profile = \Drupal\encrypt\Entity\EncryptionProfile::load($config[$key]['encrypt_profile']);
+        $encryption_profile = EncryptionProfile::load($config[$key]['encrypt_profile']);
         $data[$key] = Drupal::service('encryption')->encrypt($value, $encryption_profile);
       }
       else {

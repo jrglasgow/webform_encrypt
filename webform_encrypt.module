@@ -5,23 +5,25 @@
  * Main module file for the Webform Encrypt module.
  */
 
+use Drupal\Core\Entity\EntityInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\encrypt\Entity\EncryptionProfile;
-use Drupal\Core\Entity\EntityInterface;
 use Drupal\webform\Entity\WebformSubmission;
 
-module_load_include('inc', 'webform_encrypt', 'includes/webform_encrypt.theme');
-
 /**
- * Implementation of hook_form_FORM_ID_alter().
+ * Implements hook_form_FORM_ID_alter().
  */
 function webform_encrypt_form_webform_ui_element_form_alter(&$form, FormStateInterface $form_state) {
-  $webform = $form_state->getBuildInfo()['args']['0'];
-  $element_id = $form_state->getBuildInfo()['args']['1'];
-  $webform_elements = $webform->getElementsInitializedAndFlattened();
+  /** @var \Drupal\webform\WebformElementManagerInterface $element_manager */
+  $element_manager = \Drupal::service('plugin.manager.webform.element');
 
-  $allowed_types = array('textfield', 'textarea');
-  if (in_array($webform_elements[$element_id]['#type'], $allowed_types) || in_array($element_id, $allowed_types)) {
+  $element = $form_state->getBuildInfo()['callback_object']->getElement();
+  $element_handler = $element_manager->getElementInstance($element);
+
+  // Checks whether the element carries a value.
+  // Only input elements are allowed to be encrypted.
+  $is_input_element = $element_handler->isInput($element);
+  if ($is_input_element) {
     // To provide the fieldset for encryption fields on element config form.
     $form['element_encrypt'] = [
       '#type' => 'details',
@@ -38,42 +40,48 @@ function webform_encrypt_form_webform_ui_element_form_alter(&$form, FormStateInt
 }
 
 /**
- * Implementation of hook_form_alter().
- */
-function webform_encrypt_form_alter(&$form, &$form_state, $form_id) {
-  // When we are editing a webform submission.
-  if (strpos($form_id, 'webform_submission_') === 0) {
-    $config = \Drupal::service('config.factory')->get('webform.encrypt')->get('element.settings');
-    $elements = $form['elements'];
-
-    foreach ($elements as $key => &$element) {
-      if (isset($config[$key]['encrypt']) && $config[$key]['encrypt']) {
-        $encryption_profile = EncryptionProfile::load($config[$key]['encrypt_profile']);
-        $form['elements'][$key]['#default_value'] = Drupal::service('encryption')->decrypt($element['#default_value'], $encryption_profile);
-      }
-    }
-  }
-}
-
-/**
  * Implements hook_entity_presave().
- *
- * @param \Drupal\Core\Entity\EntityInterface $entity
  */
 function webform_encrypt_entity_presave(EntityInterface $entity) {
   if ($entity instanceof WebformSubmission) {
     $config = \Drupal::service('config.factory')->get('webform.encrypt')->get('element.settings');
     $data_original = $entity->getData();
 
+    $encryption = Drupal::service('encryption');
+
     foreach ($data_original as $key => $value) {
-      if (isset($config[$key]['encrypt']) && $config[$key]['encrypt']) {
-        $encryption_profile = EncryptionProfile::load($config[$key]['encrypt_profile']);
-        $data[$key] = Drupal::service('encryption')->encrypt($value, $encryption_profile);
-      }
-      else {
+      if (empty($config[$key]['encrypt'])) {
+        // Encryption is disabled to this field.
         $data[$key] = $value;
+
+        continue;
       }
+
+      $encryption_profile = EncryptionProfile::load($config[$key]['encrypt_profile']);
+
+      // Checks whether is an element with multiple values.
+      if (is_array($value)) {
+        $multiple_values = [];
+        foreach ($value as $multiple_values_key => $multiple_values_value) {
+          $multiple_values[$multiple_values_key] = $encryption->encrypt($multiple_values_value, $encryption_profile);
+        }
+        $data[$key] = $multiple_values;
+
+        continue;
+      }
+
+      // Single element value.
+      $data[$key] = $encryption->encrypt($value, $encryption_profile);
     }
+
     $entity->setData($data);
   }
+}
+
+/**
+ * Implements hook_entity_type_alter().
+ */
+function webform_encrypt_entity_type_alter(array &$entity_types) {
+  /* @var $entity_types \Drupal\Core\Entity\EntityTypeInterface[] */
+  $entity_types['webform_submission']->setStorageClass('Drupal\webform_encrypt\WebformEncryptSubmissionStorage');
 }

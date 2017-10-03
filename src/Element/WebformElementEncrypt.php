@@ -49,7 +49,7 @@ class WebformElementEncrypt extends FormElement {
         '#type' => 'checkbox',
         '#title' => t('Encrypt this field\'s value'),
         '#description' => t('<a href=":link">Click here</a> to edit encryption settings.', array(':link' => Url::fromRoute('entity.encryption_profile.collection')->toString())),
-        '#default_value' => $config[$field_name]['encrypt'] ? $config[$field_name]['encrypt'] : 0,
+        '#default_value' => isset($config[$field_name]['encrypt']) ? $config[$field_name]['encrypt'] : 0,
       ];
 
       $element['element_encrypt']['encrypt_profile'] = [

@@ -1,0 +1,11 @@
+element:
+  settings:
+    test_text_field:
+      encrypt: '1'
+      encrypt_profile: test_encryption_profile
+    test_text_area:
+      encrypt: '1'
+      encrypt_profile: test_encryption_profile
+    test_not_encrypted:
+      encrypt: ''
+      encrypt_profile: test_encryption_profile
